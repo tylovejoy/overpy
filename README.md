@@ -30,8 +30,21 @@ You first need to install the [pnpm package manager](https://pnpm.io/installatio
 
 - Install dependencies: `pnpm install`
 - Build in dev and test with the demo: `pnpm run dev`
+- Build the Language Server Protocol server: `pnpm run compile-lsp`
 - Build `out/overpy_standalone.js`: `pnpm run package`
 - Build and publish to prod: `pnpm run publish`
+
+## Language Server Protocol
+
+OverPy can be built as a standalone Language Server Protocol server for editors that support custom LSP commands.
+
+```sh
+pnpm install
+pnpm run compile-lsp
+node out/languageServer.js --stdio
+```
+
+Configure your editor to run `node /path/to/overpy/out/languageServer.js --stdio` for `.opy` files. The server currently provides compiler diagnostics, completions, signature help, hover documentation, document symbols, folding ranges, workspace go to definition, references and rename for user symbols, and warning suppression code actions by reusing the OverPy compiler metadata.
 
 # NPM usage
 
