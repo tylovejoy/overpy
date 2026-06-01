@@ -255,6 +255,90 @@ export function makeFunctionSignatureLabel(funcName: string, func: CompletionDat
     return label;
 }
 
+export type SemanticSymbolKind = "function" | "method" | "macro" | "variable";
+
+export type SemanticTokenIndex = {
+    normal: Map<string, SemanticSymbolKind>;
+    member: Map<string, SemanticSymbolKind>;
+    enumTypes: Set<string>;
+    enumMembers: Map<string, Set<string>>;
+};
+
+const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Builds a categorized lookup of every known symbol name for semantic highlighting.
+ * `normal` holds names usable in a normal position; `member` holds names used after a `.`.
+ * Keyword entries (and, def, elif, …) are deliberately excluded so the grammar keeps
+ * coloring them as keywords.
+ */
+export function getSemanticTokenIndex(): SemanticTokenIndex {
+    initializeCompletionState();
+
+    const normal = new Map<string, SemanticSymbolKind>();
+    const member = new Map<string, SemanticSymbolKind>();
+    const keywordNames = new Set(Object.keys(opyKeywords));
+
+    const addNames = (
+        target: Map<string, SemanticSymbolKind>,
+        names: Iterable<string>,
+        kind: SemanticSymbolKind,
+        skip?: Set<string>,
+    ): void => {
+        for (const rawName of names) {
+            const name = rawName.endsWith("()") ? rawName.slice(0, -2) : rawName;
+            if (!identifierPattern.test(name) || (skip?.has(name) ?? false) || target.has(name)) {
+                continue;
+            }
+            target.set(name, kind);
+        }
+    };
+
+    addNames(normal, Object.keys(baseFunctionData), "function", keywordNames);
+    addNames(normal, Object.keys(dynamicCompletionData.normalAstConstants), "macro");
+    addNames(normal, Object.keys(dynamicCompletionData.normalMacros), "macro");
+    addNames(normal, Object.keys(dynamicCompletionData.normalAstMacros), "macro");
+    addNames(normal, Object.keys(dynamicCompletionData.subroutines), "function");
+    addNames(normal, Object.keys(dynamicCompletionData.globalVariables), "variable");
+
+    addNames(member, Object.keys(baseMemberFunctionData), "method");
+    addNames(member, Object.keys(dynamicCompletionData.memberAstConstants), "macro");
+    addNames(member, Object.keys(dynamicCompletionData.memberMacros), "macro");
+    addNames(member, Object.keys(dynamicCompletionData.memberAstMacros), "macro");
+    addNames(member, Object.keys(dynamicCompletionData.playerVariables), "variable");
+
+    const enumTypes = new Set<string>();
+    const enumMembers = new Map<string, Set<string>>();
+
+    const registerEnum = (typeName: string, members: Iterable<string>): void => {
+        if (!identifierPattern.test(typeName)) {
+            return;
+        }
+        const memberSet = enumMembers.get(typeName) ?? new Set<string>();
+        for (const memberName of members) {
+            if (!(memberName.startsWith("__") && memberName.endsWith("__"))) {
+                memberSet.add(memberName);
+            }
+        }
+        enumMembers.set(typeName, memberSet);
+        enumTypes.add(typeName);
+    };
+
+    for (const [typeName, value] of Object.entries(constantValues)) {
+        if (typeof value !== "object" || value === null) {
+            continue;
+        }
+        const normalized = typeName.endsWith("Literal") ? typeName.slice(0, -"Literal".length) : typeName;
+        registerEnum(normalized, Object.keys(value).filter((key) => key !== "description"));
+    }
+
+    for (const [typeName, members] of Object.entries(dynamicCompletionData.userEnums)) {
+        registerEnum(typeName, Object.keys(members));
+    }
+
+    return { normal, member, enumTypes, enumMembers };
+}
+
 function buildBaseCompletionData(): void {
     const funcDoc: Record<string, CompletionData> = {
         ...actionKw,

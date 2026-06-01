@@ -21,6 +21,7 @@ import { toLspDiagnostic } from "../languageServer/diagnostics";
 import { getFoldingRanges } from "../languageServer/foldingRanges";
 import { getHover } from "../languageServer/hover";
 import { getWorkspaceReferences } from "../languageServer/references";
+import { getSemanticTokens, semanticTokenTypes } from "../languageServer/semanticTokens";
 import { getPrepareRename, getWorkspaceRename } from "../languageServer/rename";
 import { initializeLanguageServerData, initializeLanguageServerRuntime } from "../languageServer/runtime";
 import { getSignatureHelp } from "../languageServer/signatureHelp";
@@ -145,6 +146,19 @@ async function main(): Promise<void> {
     const annotationHover = getHover(hoverAnnotationDocument, { line: 0, character: 2 });
     assert.ok(annotationHover);
     assert.match(getHoverText(annotationHover), /\*\*@Event\*\*/);
+
+    const semanticDocument = TextDocument.create(
+        "file:///tmp/test.opy",
+        "overpy",
+        1,
+        ["wait(1) # Hero.ANA in a comment", "Hero.ANA", "eventPlayer.getFacingDirection()"].join("\n"),
+    );
+    const semanticTokens = decodeSemanticTokens(getSemanticTokens(semanticDocument).data);
+    assert.ok(semanticTokens.some((token) => token.line === 0 && token.character === 0 && token.length === 4 && token.type === "function"));
+    assert.ok(semanticTokens.some((token) => token.line === 1 && token.character === 0 && token.length === 4 && token.type === "enum"));
+    assert.ok(semanticTokens.some((token) => token.line === 1 && token.character === 5 && token.length === 3 && token.type === "enumMember"));
+    assert.ok(semanticTokens.some((token) => token.line === 2 && token.character === 12 && token.type === "method"));
+    assert.ok(!semanticTokens.some((token) => token.line === 0 && token.character > 7), "tokens inside comments should be ignored");
 
     const structureDocument = TextDocument.create(
         "file:///tmp/structure.opy",
@@ -519,6 +533,26 @@ async function main(): Promise<void> {
     assert.equal(validDiagnostics.filter((item) => item.severity === DiagnosticSeverity.Error).length, 0);
 
     console.log("LSP adapter tests passed");
+}
+
+function decodeSemanticTokens(data: number[]): { line: number; character: number; length: number; type: string }[] {
+    const tokens: { line: number; character: number; length: number; type: string }[] = [];
+    let line = 0;
+    let character = 0;
+
+    for (let index = 0; index < data.length; index += 5) {
+        const deltaLine = data[index];
+        const deltaCharacter = data[index + 1];
+        if (deltaLine === 0) {
+            character += deltaCharacter;
+        } else {
+            line += deltaLine;
+            character = deltaCharacter;
+        }
+        tokens.push({ line, character, length: data[index + 2], type: semanticTokenTypes[data[index + 3]] });
+    }
+
+    return tokens;
 }
 
 function getHoverText(hover: Hover): string {

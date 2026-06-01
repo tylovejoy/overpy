@@ -21,6 +21,7 @@ import { getHover } from "./hover";
 import { getWorkspaceReferences } from "./references";
 import { getPrepareRename, getWorkspaceRename } from "./rename";
 import { initializeLanguageServerRuntime } from "./runtime";
+import { getSemanticTokens, semanticTokenModifiers, semanticTokenTypes } from "./semanticTokens";
 import { getSignatureHelp } from "./signatureHelp";
 import { getDocumentSymbols } from "./symbols";
 import { validateTextDocument } from "./validation";
@@ -76,6 +77,13 @@ connection.onInitialize((params: InitializeParams) => {
                 triggerCharacters: ["(", ",", ")"],
             },
             hoverProvider: true,
+            semanticTokensProvider: {
+                legend: {
+                    tokenTypes: [...semanticTokenTypes],
+                    tokenModifiers: semanticTokenModifiers,
+                },
+                full: true,
+            },
             documentSymbolProvider: true,
             foldingRangeProvider: true,
             codeActionProvider: true,
@@ -141,6 +149,15 @@ connection.onHover((params) => {
     }
 
     return getHover(document, params.position);
+});
+
+connection.languages.semanticTokens.on((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return { data: [] };
+    }
+
+    return getSemanticTokens(document);
 });
 
 connection.onDocumentSymbol((params) => {
