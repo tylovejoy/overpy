@@ -5,6 +5,7 @@ import * as path from "node:path";
 
 import {
     CodeActionKind,
+    CompletionItem,
     CompletionItemKind,
     DiagnosticSeverity,
     FoldingRangeKind,
@@ -16,6 +17,7 @@ import { URI } from "vscode-uri";
 
 import { getCodeActions } from "../languageServer/codeActions";
 import { getCompletionList } from "../languageServer/completions";
+import { extractDeclarationDocs } from "../languageServer/declarationDocs";
 import { getDefinition, getWorkspaceDefinition } from "../languageServer/definition";
 import { toLspDiagnostic } from "../languageServer/diagnostics";
 import { getFoldingRanges } from "../languageServer/foldingRanges";
@@ -71,6 +73,23 @@ async function main(): Promise<void> {
 
     assert.equal(warning?.severity, DiagnosticSeverity.Warning);
     assert.equal(warning?.code, "w_wait_9999");
+
+    const declarationDocs = extractDeclarationDocs(
+        [
+            "globalvar score # The team's score",
+            "# Charge toward the ultimate",
+            "playervar ultCharge",
+            "enum GameStatus:",
+            "    # Waiting for players to join",
+            "    SETUP = 0",
+            "    PLAYING = 1 # Match is live",
+            "#!define NOT_A_DOC 5",
+        ].join("\n"),
+    );
+    assert.equal(declarationDocs.variables.get("score"), "The team's score");
+    assert.equal(declarationDocs.variables.get("ultCharge"), "Charge toward the ultimate");
+    assert.equal(declarationDocs.enumMembers.get("GameStatus")?.get("SETUP"), "Waiting for players to join");
+    assert.equal(declarationDocs.enumMembers.get("GameStatus")?.get("PLAYING"), "Match is live");
 
     const annotationDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "rule \"hello\":\n    @");
     const annotationCompletions = getCompletionList(annotationDocument, { line: 1, character: 5 }, "@");
@@ -553,7 +572,53 @@ async function main(): Promise<void> {
     const validDiagnostics = validValidation.diagnosticsByUri.get(validDocument.uri) ?? [];
     assert.equal(validDiagnostics.filter((item) => item.severity === DiagnosticSeverity.Error).length, 0);
 
+    const documentedDocument = TextDocument.create(
+        "file:///tmp/documented.opy",
+        "overpy",
+        1,
+        [
+            "globalvar score # The team's score",
+            "# Charge toward the ultimate",
+            "playervar ultCharge",
+            "enum GameStatus:",
+            "    # Waiting for players to join",
+            "    SETUP = 0",
+            "    PLAYING = 1 # Match is live",
+            "rule \"hello\":",
+            "    @Event global",
+            "    score = 0",
+        ].join("\n"),
+    );
+    await validateTextDocument(documentedDocument, "en-US");
+
+    const scoreHover = getHover(documentedDocument, { line: 0, character: "globalvar sc".length });
+    assert.ok(scoreHover);
+    assert.match(getHoverText(scoreHover), /The team's score/);
+
+    const ultChargeHover = getHover(documentedDocument, { line: 2, character: "playervar ul".length });
+    assert.ok(ultChargeHover);
+    assert.match(getHoverText(ultChargeHover), /Charge toward the ultimate/);
+
+    const enumMemberCompletions = getCompletionList(
+        TextDocument.create("file:///tmp/enum.opy", "overpy", 1, "GameStatus."),
+        { line: 0, character: "GameStatus.".length },
+        ".",
+    );
+    const setupItem = enumMemberCompletions.items.find((item) => item.label === "SETUP");
+    assert.ok(setupItem);
+    assert.match(getDocumentationValue(setupItem), /Waiting for players to join/);
+    const playingItem = enumMemberCompletions.items.find((item) => item.label === "PLAYING");
+    assert.ok(playingItem);
+    assert.match(getDocumentationValue(playingItem), /Match is live/);
+
     console.log("LSP adapter tests passed");
+}
+
+function getDocumentationValue(item: CompletionItem): string {
+    if (typeof item.documentation === "string") {
+        return item.documentation;
+    }
+    return item.documentation?.value ?? "";
 }
 
 function decodeSemanticTokens(data: number[]): { line: number; character: number; length: number; type: string }[] {

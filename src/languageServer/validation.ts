@@ -6,6 +6,7 @@ import type { OWLanguage } from "../types";
 import { OpyError as OverpyError } from "../utils/logging";
 import { groupDiagnosticsByUri, getDocumentFileInfo } from "./diagnostics";
 import { updateCompletionStateFromCompileResult } from "./completionState";
+import { extractDeclarationDocs } from "./declarationDocs";
 import { initializeLanguageServerRuntime } from "./runtime";
 
 export type ValidationResult = {
@@ -22,7 +23,7 @@ export async function validateTextDocument(
 
     try {
         const compileResult = await compile(document.getText(), workshopLanguage, rootPath, mainFileName);
-        updateCompletionStateFromCompileResult(compileResult);
+        updateCompletionStateFromCompileResult(compileResult, extractDeclarationDocs(document.getText()));
 
         return {
             diagnosticsByUri: groupDiagnosticsByUri(compileResult.encounteredWarnings, document),

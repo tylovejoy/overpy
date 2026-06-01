@@ -46,6 +46,7 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
         getCompletionHover(normalizedName, state.preprocessingCompletions) ??
         getCompletionHover(normalizedName, state.stringEntityCompletions) ??
         getCompletionHover(normalizedName, state.defaultCompletions) ??
+        getCompletionHover(normalizedName, state.memberCompletions) ??
         getEnumTypeHover(normalizedName);
 
     if (!completionHover) {

@@ -30,6 +30,7 @@ import { opyModules } from "../data/opy/modules";
 import { preprocessingDirectives } from "../data/opy/preprocessing";
 import { opyStringEntities } from "../data/opy/stringEntities";
 import { valueFuncKw } from "../data/values";
+import { DeclarationDocs, emptyDeclarationDocs } from "./declarationDocs";
 import { builtInEnumNameToAstInfo } from "../compiler/parser";
 import { astToOpy } from "../decompiler/astToOpy";
 import type { Ast } from "../utils/ast";
@@ -63,6 +64,7 @@ export type CompletionCompileResult = {
 type DynamicCompletionData = {
     activatedExtensions: string[];
     availableExtensionPoints: number;
+    declarationDocs: DeclarationDocs;
     globalVariables: Record<string, CompletionData>;
     memberAstConstants: Record<string, CompletionData>;
     memberAstMacros: Record<string, CompletionData>;
@@ -106,6 +108,7 @@ let initialized = false;
 let dynamicCompletionData: DynamicCompletionData = {
     activatedExtensions: [],
     availableExtensionPoints: -1,
+    declarationDocs: emptyDeclarationDocs(),
     globalVariables: {},
     memberAstConstants: {},
     memberAstMacros: {},
@@ -134,20 +137,24 @@ export function getCompletionState(): CompletionState {
     return completionState;
 }
 
-export function updateCompletionStateFromCompileResult(compileResult: CompletionCompileResult): void {
+export function updateCompletionStateFromCompileResult(
+    compileResult: CompletionCompileResult,
+    declarationDocs: DeclarationDocs = emptyDeclarationDocs(),
+): void {
     initializeCompletionState();
 
     dynamicCompletionData = {
         activatedExtensions: compileResult.activatedExtensions,
         availableExtensionPoints: compileResult.availableExtensionPoints,
-        globalVariables: getVariableCompletions(compileResult.globalVariables, "global"),
+        declarationDocs,
+        globalVariables: getVariableCompletions(compileResult.globalVariables, "global", declarationDocs.variables),
         memberAstConstants: {},
         memberAstMacros: {},
         memberMacros: {},
         normalAstConstants: {},
         normalAstMacros: {},
         normalMacros: {},
-        playerVariables: getVariableCompletions(compileResult.playerVariables, "player"),
+        playerVariables: getVariableCompletions(compileResult.playerVariables, "player", declarationDocs.variables),
         spentExtensionPoints: compileResult.spentExtensionPoints,
         subroutines: getSubroutineCompletions(compileResult.subroutines),
         userEnums: compileResult.enumMembers,
@@ -396,7 +403,7 @@ function buildBaseCompletionData(): void {
 function refreshCompletionState(): void {
     const constantValueCompletions = {
         ...baseConstantValueCompletions,
-        ...getUserEnumCompletionLists(dynamicCompletionData.userEnums),
+        ...getUserEnumCompletionLists(dynamicCompletionData.userEnums, dynamicCompletionData.declarationDocs.enumMembers),
     };
 
     for (const constType of ["Beam", "Effect", "DynamicEffect"]) {
@@ -416,7 +423,12 @@ function refreshCompletionState(): void {
 
     const defaultItems: Record<string, CompletionData> = {
         ...baseFunctionData,
-        ...Object.fromEntries(Object.keys(constantValueCompletions).map((key) => [key, { description: `The \`${key}\` enum.` }])),
+        ...Object.fromEntries(
+            Object.keys(constantValueCompletions).map((key) => {
+                const doc = dynamicCompletionData.declarationDocs.enums.get(key);
+                return [key, { description: doc ? `${doc}\n\nThe \`${key}\` enum.` : `The \`${key}\` enum.` }];
+            }),
+        ),
         ...dynamicCompletionData.normalAstConstants,
         ...dynamicCompletionData.normalMacros,
         ...dynamicCompletionData.normalAstMacros,
@@ -471,10 +483,14 @@ function makeDefaultConstantValueCompletions(): Record<string, CompletionList> {
     return completionLists;
 }
 
-function getUserEnumCompletionLists(userEnums: Record<string, Record<string, Ast>>): Record<string, CompletionList> {
+function getUserEnumCompletionLists(
+    userEnums: Record<string, Record<string, Ast>>,
+    memberDocs: Map<string, Map<string, string>>,
+): Record<string, CompletionList> {
     const result: Record<string, CompletionList> = {};
 
     for (const [enumName, members] of Object.entries(userEnums)) {
+        const enumMemberDocs = memberDocs.get(enumName);
         result[enumName] = {
             isIncomplete: false,
             items: Object.entries(members).map(([memberName, memberAst]) => {
@@ -482,6 +498,11 @@ function getUserEnumCompletionLists(userEnums: Record<string, Record<string, Ast
                 try {
                     description += `\n\nValue: \`${astToOpy(memberAst)}\``;
                 } catch (e) {}
+
+                const doc = enumMemberDocs?.get(memberName);
+                if (doc) {
+                    description = `${doc}\n\n${description}`;
+                }
 
                 return makeCompletionItem(memberName, { description }, CompletionItemKind.EnumMember);
             }),
@@ -569,14 +590,17 @@ function fillAstConstantCompletions(constants: AstConstantData[]): void {
     }
 }
 
-function getVariableCompletions(variables: Variable[], scope: "global" | "player"): Record<string, CompletionData> {
+function getVariableCompletions(
+    variables: Variable[],
+    scope: "global" | "player",
+    docs: Map<string, string>,
+): Record<string, CompletionData> {
     return Object.fromEntries(
-        variables.map((variable) => [
-            variable.name,
-            {
-                description: variable.index !== -1 ? `A ${scope} variable. (index: ${variable.index})` : `A ${scope} variable.`,
-            },
-        ]),
+        variables.map((variable) => {
+            const base = variable.index !== -1 ? `A ${scope} variable. (index: ${variable.index})` : `A ${scope} variable.`;
+            const doc = docs.get(variable.name);
+            return [variable.name, { description: doc ? `${doc}\n\n${base}` : base }];
+        }),
     );
 }
 
