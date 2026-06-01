@@ -231,6 +231,30 @@ export function makeSignatureHelp(
     };
 }
 
+export function makeFunctionSignatureLabel(funcName: string, func: CompletionData): string {
+    const isMemberFunction = func.isMember === true;
+    const visibleArgs = Array.isArray(func.args) ? (isMemberFunction ? func.args.slice(1) : func.args) : [];
+
+    let label = "";
+    if (func.class) {
+        label += `${func.class}.`;
+    } else if (isMemberFunction) {
+        label += "Player.";
+    }
+
+    label += `${funcName}(`;
+    label += visibleArgs
+        .map((arg) => (arg.default !== undefined ? `${arg.name}=${argDefaultToString(arg)}` : arg.name))
+        .join(", ");
+    label += ")";
+
+    if (func.return !== undefined) {
+        label += ` -> ${typeToString(func.return as Type)}`;
+    }
+
+    return label;
+}
+
 function buildBaseCompletionData(): void {
     const funcDoc: Record<string, CompletionData> = {
         ...actionKw,

@@ -112,6 +112,12 @@ async function main(): Promise<void> {
     assert.match(getHoverText(functionHover), /^```opy\nwait\(/);
     assert.match(getHoverText(functionHover), /time/);
 
+    const hoverNoArgMemberDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "eventPlayer.getFacingDirection()");
+    const noArgMemberHover = getHover(hoverNoArgMemberDocument, { line: 0, character: "eventPlayer.getF".length });
+    assert.ok(noArgMemberHover);
+    assert.match(getHoverText(noArgMemberHover), /^```opy\nPlayer\.getFacingDirection\(\) -> Direction\n```/);
+    assert.match(getHoverText(noArgMemberHover), /directional vector/);
+
     const hoverEnumDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "Hero.ANA");
     const enumHover = getHover(hoverEnumDocument, { line: 0, character: "Hero.A".length });
     assert.ok(enumHover);

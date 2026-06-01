@@ -9,7 +9,7 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { getCompletionState, makeSignatureHelp } from "./completionState";
+import { getCompletionState, makeFunctionSignatureLabel, makeSignatureHelp } from "./completionState";
 
 export function getHover(document: TextDocument, position: Position): Hover | null {
     const qualifiedSymbol = getQualifiedSymbolAtPosition(document, position);
@@ -64,15 +64,14 @@ function getFunctionHover(functionName: string): MarkupContent | null {
         return null;
     }
 
-    const signatureHelp = makeSignatureHelp(functionName, functionData, 0, null);
-    if (!signatureHelp || signatureHelp.signatures.length === 0) {
-        return null;
+    const sections = [`\`\`\`opy\n${makeFunctionSignatureLabel(functionName, functionData)}\n\`\`\``];
+
+    if (typeof functionData.description === "string" && functionData.description.trim().length > 0) {
+        sections.push(functionData.description.trim());
     }
 
-    const signature = signatureHelp.signatures[0];
-    const sections = [`\`\`\`opy\n${signature.label}\n\`\`\``];
-
-    if (signature.parameters && signature.parameters.length > 0) {
+    const signature = makeSignatureHelp(functionName, functionData, 0, null)?.signatures[0];
+    if (signature?.parameters && signature.parameters.length > 0) {
         const parameterDocs = signature.parameters.map((parameter) => {
             const label = Array.isArray(parameter.label)
                 ? signature.label.slice(parameter.label[0], parameter.label[1])
