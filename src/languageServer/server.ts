@@ -14,6 +14,7 @@ import { URI } from "vscode-uri";
 
 import type { OWLanguage } from "../types";
 import { getCodeActions } from "./codeActions";
+import { getColorPresentations, getDocumentColors } from "./colors";
 import { getCompletionList } from "./completions";
 import { getWorkspaceDefinition } from "./definition";
 import { getDocumentLinks } from "./documentLinks";
@@ -92,6 +93,7 @@ connection.onInitialize((params: InitializeParams) => {
             documentLinkProvider: {
                 resolveProvider: false,
             },
+            colorProvider: true,
             codeActionProvider: true,
             definitionProvider: true,
             referencesProvider: true,
@@ -200,6 +202,19 @@ connection.onDocumentLinks((params) => {
     }
 
     return getDocumentLinks(document);
+});
+
+connection.onDocumentColor((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return [];
+    }
+
+    return getDocumentColors(document);
+});
+
+connection.onColorPresentation((params) => {
+    return getColorPresentations(params.color, params.range);
 });
 
 connection.onCodeAction((params) => {

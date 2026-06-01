@@ -5,12 +5,15 @@ import * as path from "node:path";
 
 import {
     CodeActionKind,
+    Color,
     CompletionItem,
     CompletionItemKind,
     DiagnosticSeverity,
     FoldingRangeKind,
     Hover,
+    Range,
     SymbolKind,
+    TextEdit,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
@@ -18,6 +21,7 @@ import { URI } from "vscode-uri";
 import { getCodeActions } from "../languageServer/codeActions";
 import { getCompletionList } from "../languageServer/completions";
 import { extractDeclarationDocs } from "../languageServer/declarationDocs";
+import { getColorPresentations, getDocumentColors } from "../languageServer/colors";
 import { getDefinition, getWorkspaceDefinition } from "../languageServer/definition";
 import { toLspDiagnostic } from "../languageServer/diagnostics";
 import { getDocumentLinks } from "../languageServer/documentLinks";
@@ -587,6 +591,48 @@ async function main(): Promise<void> {
     } finally {
         await rm(workspaceRoot, { force: true, recursive: true });
     }
+
+    const colorDocument = TextDocument.create(
+        "file:///tmp/colors.opy",
+        "overpy",
+        1,
+        [
+            "#!suppressWarnings w_unused_variable",
+            "globalvar named = Color.RED",
+            "globalvar customRgb = rgb(255, 0, 0)",
+            "globalvar customRgba = rgb(0, 255, 0, 128)",
+            "globalvar fromHsl = hsl(0, 1, 0.5)",
+            "globalvar dynamic = Color.TEAM_1",
+            "globalvar expr = rgb(score, 0, 0)",
+            "globalvar inString = \"Color.RED rgb(1, 2, 3)\"",
+            "# comment Color.BLUE rgb(4, 5, 6)",
+        ].join("\n"),
+    );
+
+    const documentColors = getDocumentColors(colorDocument)
+        .map((entry) => ({ text: colorDocument.getText(entry.range), color: entry.color }))
+        .sort((left, right) => left.text.localeCompare(right.text));
+
+    assert.deepEqual(
+        documentColors,
+        [
+            { text: "Color.RED", color: Color.create(200 / 255, 0, 19 / 255, 1) },
+            { text: "hsl(0, 1, 0.5)", color: Color.create(1, 0, 0, 1) },
+            { text: "rgb(0, 255, 0, 128)", color: Color.create(0, 1, 0, 128 / 255) },
+            { text: "rgb(255, 0, 0)", color: Color.create(1, 0, 0, 1) },
+        ],
+    );
+
+    const exactNamedPresentations = getColorPresentations(Color.create(200 / 255, 0, 19 / 255, 1), Range.create(1, 18, 1, 27));
+    assert.deepEqual(exactNamedPresentations, [
+        { label: "rgb(200, 0, 19)", textEdit: TextEdit.replace(Range.create(1, 18, 1, 27), "rgb(200, 0, 19)") },
+        { label: "Color.RED", textEdit: TextEdit.replace(Range.create(1, 18, 1, 27), "Color.RED") },
+    ]);
+
+    const translucentPresentations = getColorPresentations(Color.create(1, 0, 0, 0.5), Range.create(2, 0, 2, 0));
+    assert.deepEqual(translucentPresentations, [
+        { label: "rgb(255, 0, 0, 128)", textEdit: TextEdit.replace(Range.create(2, 0, 2, 0), "rgb(255, 0, 0, 128)") },
+    ]);
 
     await initializeLanguageServerRuntime();
 

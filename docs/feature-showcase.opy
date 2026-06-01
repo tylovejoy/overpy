@@ -10,7 +10,7 @@
 #    completions · signature help · hover · semantic tokens
 #    document symbols · inlay hints · folding ranges · code actions
 #    go-to-definition · find references · rename · diagnostics
-#    document links
+#    document links · color picker
 # =====================================================================
 
 # --- Preprocessing directives -----------------------------------------
@@ -150,3 +150,14 @@ rule "Showcase display":
     # panel stays empty — flip any token to something invalid to watch
     # the compiler-driven squiggles appear in real time.
     wait(0.5, Wait.IGNORE_CONDITION)
+
+rule "Showcase colors":
+    @Event global
+    # COLOR PICKER: every literal color below gets an inline swatch with a
+    # native picker. Click a swatch to edit it — the picker writes back an
+    # rgb(...) form, or the matching Color.NAME when it lands exactly on one.
+    playEffect(getAllPlayers(), DynamicEffect.BAD_EXPLOSION, Color.AQUA, vect(0, 0, 0), 1)        # named constant
+    playEffect(getAllPlayers(), DynamicEffect.BAD_EXPLOSION, rgb(63, 191, 116), vect(0, 1, 0), 1) # rgb literal
+    playEffect(getAllPlayers(), DynamicEffect.BAD_EXPLOSION, hsl(210, 0.8, 0.55), vect(0, 2, 0), 1) # hsl literal
+    # No swatch here: the arguments are expressions, not plain numbers.
+    playEffect(getAllPlayers(), DynamicEffect.BAD_EXPLOSION, rgb(score * 10, 0, 0), vect(0, 3, 0), 1)

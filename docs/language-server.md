@@ -22,6 +22,7 @@ It lives entirely under [`src/languageServer/`](../src/languageServer).
   - [Definition, references, rename](#definition-references-rename)
   - [Symbols, folding, code actions](#symbols-folding-code-actions)
   - [Document links](#document-links)
+  - [Color picker](#color-picker)
 - [Comment-based documentation](#comment-based-documentation)
 - [Testing](#testing)
 - [Known limitations](#known-limitations)
@@ -200,6 +201,25 @@ directory (mirroring the compiler's include resolution), and the link range cove
 quoted path. A path that points at a directory links to that directory; a path that does not
 exist on disk produces no link rather than a broken one. Only `file://` documents are
 scanned — unsaved buffers have no directory to resolve against, so they are skipped.
+
+### Color picker
+
+[`colors.ts`](../src/languageServer/colors.ts) renders an inline color swatch — and a native
+color picker — next to every literal color value:
+
+- **Named constants** (`Color.RED`, `Color.SKY_BLUE`, …) — looked up in
+  [`constants.ts`](../src/data/constants.ts) → `ColorLiteral`. `Color.TEAM_1` / `Color.TEAM_2`
+  resolve at runtime and have no fixed RGB, so they get no swatch.
+- **`rgb(r, g, b[, a])`** — when every argument is a plain `0`–`255` integer. Calls whose
+  arguments are expressions (e.g. `rgb(score, 0, 0)`) are skipped, since there is no single
+  value to preview.
+- **`hsl(h, s, l[, a])`** — when every argument is a plain number, converted to RGB with the
+  same formula the compiler uses in [`hsl.ts`](../src/compiler/functions/hsl.ts).
+
+Editing a swatch writes back an `rgb(...)` form (with an alpha argument only when the color is
+not fully opaque). When the picked color exactly matches a built-in constant, that
+`Color.NAME` is offered as a second presentation. String and comment regions are masked before
+scanning, so colors mentioned in text are ignored.
 
 ## Comment-based documentation
 
