@@ -20,6 +20,7 @@ import { getDefinition, getWorkspaceDefinition } from "../languageServer/definit
 import { toLspDiagnostic } from "../languageServer/diagnostics";
 import { getFoldingRanges } from "../languageServer/foldingRanges";
 import { getHover } from "../languageServer/hover";
+import { getInlayHints } from "../languageServer/inlayHints";
 import { getWorkspaceReferences } from "../languageServer/references";
 import { getSemanticTokens, semanticTokenTypes } from "../languageServer/semanticTokens";
 import { getPrepareRename, getWorkspaceRename } from "../languageServer/rename";
@@ -159,6 +160,26 @@ async function main(): Promise<void> {
     assert.ok(semanticTokens.some((token) => token.line === 1 && token.character === 5 && token.length === 3 && token.type === "enumMember"));
     assert.ok(semanticTokens.some((token) => token.line === 2 && token.character === 12 && token.type === "method"));
     assert.ok(!semanticTokens.some((token) => token.line === 0 && token.character > 7), "tokens inside comments should be ignored");
+
+    const inlayDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "wait(1, IGNORE_CONDITION)");
+    const inlayHints = getInlayHints(inlayDocument);
+    const timeHint = inlayHints.find((hint) => hint.label === "time:");
+    assert.ok(timeHint);
+    assert.deepEqual(timeHint.position, { line: 0, character: 5 });
+    const waitBehaviorHint = inlayHints.find((hint) => hint.label === "waitBehavior:");
+    assert.ok(waitBehaviorHint);
+    assert.deepEqual(waitBehaviorHint.position, { line: 0, character: 8 });
+
+    const inlayMemberDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "eventPlayer.isHoldingButton(Button.JUMP)");
+    const inlayMemberHints = getInlayHints(inlayMemberDocument);
+    assert.ok(inlayMemberHints.some((hint) => hint.label === "button:"));
+    assert.ok(!inlayMemberHints.some((hint) => hint.label === "player:"), "the implicit self parameter should not be hinted");
+
+    const inlayKeywordDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "wait(waitBehavior=IGNORE_CONDITION)");
+    assert.equal(getInlayHints(inlayKeywordDocument).length, 0, "keyword arguments are already named");
+
+    const inlayCommentDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "# wait(1, IGNORE_CONDITION)");
+    assert.equal(getInlayHints(inlayCommentDocument).length, 0, "calls inside comments should be ignored");
 
     const structureDocument = TextDocument.create(
         "file:///tmp/structure.opy",

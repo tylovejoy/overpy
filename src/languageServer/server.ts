@@ -18,6 +18,7 @@ import { getCompletionList } from "./completions";
 import { getWorkspaceDefinition } from "./definition";
 import { getFoldingRanges } from "./foldingRanges";
 import { getHover } from "./hover";
+import { getInlayHints } from "./inlayHints";
 import { getWorkspaceReferences } from "./references";
 import { getPrepareRename, getWorkspaceRename } from "./rename";
 import { initializeLanguageServerRuntime } from "./runtime";
@@ -85,6 +86,7 @@ connection.onInitialize((params: InitializeParams) => {
                 full: true,
             },
             documentSymbolProvider: true,
+            inlayHintProvider: true,
             foldingRangeProvider: true,
             codeActionProvider: true,
             definitionProvider: true,
@@ -149,6 +151,15 @@ connection.onHover((params) => {
     }
 
     return getHover(document, params.position);
+});
+
+connection.languages.inlayHint.on((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return [];
+    }
+
+    return getInlayHints(document, params.range);
 });
 
 connection.languages.semanticTokens.on((params) => {
