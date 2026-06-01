@@ -101,7 +101,7 @@
                 },
                 "overpy.useLanguageServer": {
                     "type": "boolean",
-                    "description": "Use the bundled OverPy language server for diagnostics, completions, signature help, hover, go to definition, references, rename, symbols, folding, and code actions. Disable this to use the legacy in-extension providers.",
+                    "description": "Use the bundled OverPy language server for diagnostics, completions, signature help, hover, semantic tokens, inlay hints, go to definition, references, rename, symbols, folding, and code actions. Disable this to use the legacy in-extension providers.",
                     "default": true
                 },
                 "overpy.compileOnSave": {

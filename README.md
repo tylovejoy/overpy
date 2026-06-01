@@ -44,7 +44,9 @@ pnpm run compile-lsp
 node out/languageServer.js --stdio
 ```
 
-Configure your editor to run `node /path/to/overpy/out/languageServer.js --stdio` for `.opy` files. The server currently provides compiler diagnostics, completions, signature help, hover documentation, document symbols, folding ranges, workspace go to definition, references and rename for user symbols, and warning suppression code actions by reusing the OverPy compiler metadata.
+Configure your editor to run `node /path/to/overpy/out/languageServer.js --stdio` for `.opy` files. The server currently provides compiler diagnostics, completions (including type-aware argument values), signature help, hover documentation, semantic tokens, parameter inlay hints, document symbols, folding ranges, workspace go to definition, references and rename for user symbols, and warning suppression code actions by reusing the OverPy compiler metadata. You can also document your own `globalvar`/`playervar`/`def`/`enum` declarations with comments and they show up in hover and completion popups.
+
+See [`docs/language-server.md`](docs/language-server.md) for the architecture, per-feature internals, and the comment-documentation conventions.
 
 # NPM usage
 
