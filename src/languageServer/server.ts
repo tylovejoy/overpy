@@ -16,6 +16,7 @@ import type { OWLanguage } from "../types";
 import { getCodeActions } from "./codeActions";
 import { getCompletionList } from "./completions";
 import { getWorkspaceDefinition } from "./definition";
+import { getDocumentLinks } from "./documentLinks";
 import { getFoldingRanges } from "./foldingRanges";
 import { getHover } from "./hover";
 import { getInlayHints } from "./inlayHints";
@@ -88,6 +89,9 @@ connection.onInitialize((params: InitializeParams) => {
             documentSymbolProvider: true,
             inlayHintProvider: true,
             foldingRangeProvider: true,
+            documentLinkProvider: {
+                resolveProvider: false,
+            },
             codeActionProvider: true,
             definitionProvider: true,
             referencesProvider: true,
@@ -187,6 +191,15 @@ connection.onFoldingRanges((params) => {
     }
 
     return getFoldingRanges(document);
+});
+
+connection.onDocumentLinks((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return [];
+    }
+
+    return getDocumentLinks(document);
 });
 
 connection.onCodeAction((params) => {

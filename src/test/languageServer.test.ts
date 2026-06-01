@@ -20,6 +20,7 @@ import { getCompletionList } from "../languageServer/completions";
 import { extractDeclarationDocs } from "../languageServer/declarationDocs";
 import { getDefinition, getWorkspaceDefinition } from "../languageServer/definition";
 import { toLspDiagnostic } from "../languageServer/diagnostics";
+import { getDocumentLinks } from "../languageServer/documentLinks";
 import { getFoldingRanges } from "../languageServer/foldingRanges";
 import { getHover } from "../languageServer/hover";
 import { getInlayHints } from "../languageServer/inlayHints";
@@ -545,6 +546,41 @@ async function main(): Promise<void> {
                         start: { line: 2, character: 4 },
                         end: { line: 2, character: 15 },
                     },
+                ],
+            ],
+        );
+
+        await writeFile(mainPath, "rule \"noop\":\n    pass\n");
+
+        const linkDocument = TextDocument.create(
+            URI.file(mainPath).toString(),
+            "overpy",
+            1,
+            [
+                "#!mainFile \"main.opy\"",
+                "#!include \"scripts/shared.opy\"",
+                "#!include \"scripts/\"",
+                "#!include \"missing.opy\"",
+                "rule \"noop\":",
+                "    pass",
+            ].join("\n"),
+        );
+
+        const documentLinks = getDocumentLinks(linkDocument);
+        assert.deepEqual(
+            documentLinks.map((link) => [link.range, link.target]),
+            [
+                [
+                    { start: { line: 0, character: 12 }, end: { line: 0, character: 20 } },
+                    URI.file(mainPath).toString(),
+                ],
+                [
+                    { start: { line: 1, character: 11 }, end: { line: 1, character: 29 } },
+                    URI.file(sharedPath).toString(),
+                ],
+                [
+                    { start: { line: 2, character: 11 }, end: { line: 2, character: 19 } },
+                    URI.file(nestedRoot).toString(),
                 ],
             ],
         );

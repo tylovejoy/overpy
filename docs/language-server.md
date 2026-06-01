@@ -21,6 +21,7 @@ It lives entirely under [`src/languageServer/`](../src/languageServer).
   - [Inlay hints](#inlay-hints)
   - [Definition, references, rename](#definition-references-rename)
   - [Symbols, folding, code actions](#symbols-folding-code-actions)
+  - [Document links](#document-links)
 - [Comment-based documentation](#comment-based-documentation)
 - [Testing](#testing)
 - [Known limitations](#known-limitations)
@@ -189,6 +190,16 @@ subroutine declarations and their usages.
 [`foldingRanges.ts`](../src/languageServer/foldingRanges.ts), and
 [`codeActions.ts`](../src/languageServer/codeActions.ts) (e.g. a "suppress warning" quick fix
 that inserts a `#!suppressWarnings` directive).
+
+### Document links
+
+[`documentLinks.ts`](../src/languageServer/documentLinks.ts) turns the file path in every
+`#!include "..."` and `#!mainFile "..."` directive into a clickable, <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>-clickable
+link that opens the referenced file. Paths are resolved relative to the current file's
+directory (mirroring the compiler's include resolution), and the link range covers just the
+quoted path. A path that points at a directory links to that directory; a path that does not
+exist on disk produces no link rather than a broken one. Only `file://` documents are
+scanned — unsaved buffers have no directory to resolve against, so they are skipped.
 
 ## Comment-based documentation
 

@@ -10,6 +10,7 @@
 #    completions · signature help · hover · semantic tokens
 #    document symbols · inlay hints · folding ranges · code actions
 #    go-to-definition · find references · rename · diagnostics
+#    document links
 # =====================================================================
 
 # --- Preprocessing directives -----------------------------------------
@@ -18,6 +19,12 @@
 #  directive would surface a red squiggle here.
 #!suppressWarnings w_unused_variable
 #!define PI 3.14159
+
+# --- #!include --------------------------------------------------------
+#  DOCUMENT LINKS: the quoted path below is rendered as a clickable link
+#  — Ctrl/Cmd-Click it to open the sibling file. Paths that resolve to a
+#  missing file get no link instead of a broken one.
+#!include "showcase-include.opy"
 
 # --- #!define macro ---------------------------------------------------
 #  DOCUMENT SYMBOLS: appears in the outline as a Constant ("define").
