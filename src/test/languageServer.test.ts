@@ -79,6 +79,7 @@ async function main(): Promise<void> {
             "globalvar score # The team's score",
             "# Charge toward the ultimate",
             "playervar ultCharge",
+            "def resetScore(): # Reset the score to zero",
             "enum GameStatus:",
             "    # Waiting for players to join",
             "    SETUP = 0",
@@ -88,6 +89,7 @@ async function main(): Promise<void> {
     );
     assert.equal(declarationDocs.variables.get("score"), "The team's score");
     assert.equal(declarationDocs.variables.get("ultCharge"), "Charge toward the ultimate");
+    assert.equal(declarationDocs.subroutines.get("resetScore"), "Reset the score to zero");
     assert.equal(declarationDocs.enumMembers.get("GameStatus")?.get("SETUP"), "Waiting for players to join");
     assert.equal(declarationDocs.enumMembers.get("GameStatus")?.get("PLAYING"), "Match is live");
 
@@ -584,9 +586,12 @@ async function main(): Promise<void> {
             "    # Waiting for players to join",
             "    SETUP = 0",
             "    PLAYING = 1 # Match is live",
+            "# Reset the score back to zero",
+            "def resetScore():",
+            "    score = 0",
             "rule \"hello\":",
             "    @Event global",
-            "    score = 0",
+            "    resetScore()",
         ].join("\n"),
     );
     await validateTextDocument(documentedDocument, "en-US");
@@ -598,6 +603,10 @@ async function main(): Promise<void> {
     const ultChargeHover = getHover(documentedDocument, { line: 2, character: "playervar ul".length });
     assert.ok(ultChargeHover);
     assert.match(getHoverText(ultChargeHover), /Charge toward the ultimate/);
+
+    const resetScoreHover = getHover(documentedDocument, { line: 8, character: "def reset".length });
+    assert.ok(resetScoreHover);
+    assert.match(getHoverText(resetScoreHover), /Reset the score back to zero/);
 
     const enumMemberCompletions = getCompletionList(
         TextDocument.create("file:///tmp/enum.opy", "overpy", 1, "GameStatus."),

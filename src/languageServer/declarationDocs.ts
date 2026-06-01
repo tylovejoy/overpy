@@ -6,6 +6,7 @@
  */
 export type DeclarationDocs = {
     variables: Map<string, string>;
+    subroutines: Map<string, string>;
     enums: Map<string, string>;
     enumMembers: Map<string, Map<string, string>>;
 };
@@ -13,6 +14,7 @@ export type DeclarationDocs = {
 export function emptyDeclarationDocs(): DeclarationDocs {
     return {
         variables: new Map(),
+        subroutines: new Map(),
         enums: new Map(),
         enumMembers: new Map(),
     };
@@ -41,6 +43,15 @@ export function extractDeclarationDocs(text: string): DeclarationDocs {
             const doc = getDocFor(lines, index);
             if (doc) {
                 docs.variables.set(variableMatch[1], doc);
+            }
+            continue;
+        }
+
+        const subroutineMatch = line.match(/^\s*def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/);
+        if (subroutineMatch) {
+            const doc = getDocFor(lines, index);
+            if (doc) {
+                docs.subroutines.set(subroutineMatch[1], doc);
             }
             continue;
         }

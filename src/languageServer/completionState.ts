@@ -156,7 +156,7 @@ export function updateCompletionStateFromCompileResult(
         normalMacros: {},
         playerVariables: getVariableCompletions(compileResult.playerVariables, "player", declarationDocs.variables),
         spentExtensionPoints: compileResult.spentExtensionPoints,
-        subroutines: getSubroutineCompletions(compileResult.subroutines),
+        subroutines: getSubroutineCompletions(compileResult.subroutines, declarationDocs.subroutines),
         userEnums: compileResult.enumMembers,
     };
 
@@ -604,15 +604,22 @@ function getVariableCompletions(
     );
 }
 
-function getSubroutineCompletions(subroutineNames: Subroutine[]): Record<string, CompletionData> {
+function getSubroutineCompletions(
+    subroutineNames: Subroutine[],
+    docs: Map<string, string>,
+): Record<string, CompletionData> {
     return Object.fromEntries(
-        subroutineNames.map((subroutine) => [
-            `${subroutine.name}()`,
-            {
-                args: [],
-                description: subroutine.index ? `A subroutine. (index: ${subroutine.index})` : "A subroutine.",
-            },
-        ]),
+        subroutineNames.map((subroutine) => {
+            const base = subroutine.index ? `A subroutine. (index: ${subroutine.index})` : "A subroutine.";
+            const doc = docs.get(subroutine.name);
+            return [
+                `${subroutine.name}()`,
+                {
+                    args: [],
+                    description: doc ? `${doc}\n\n${base}` : base,
+                },
+            ];
+        }),
     );
 }
 
