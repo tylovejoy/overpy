@@ -99,6 +99,10 @@ Two derived accessors are built on top of the state:
 
 Server capabilities are declared in `server.ts` → `onInitialize`. Each maps to one module.
 
+> **Hands-on reference:** [`feature-showcase.opy`](./feature-showcase.opy) is an annotated,
+> cleanly-compiling `.opy` file that exercises every provider below. Open it with the
+> extension running and follow the inline comments to see each feature in action.
+
 ### Diagnostics
 
 [`validation.ts`](../src/languageServer/validation.ts) compiles the document, converts
