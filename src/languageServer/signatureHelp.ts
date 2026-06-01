@@ -31,11 +31,13 @@ export function getSignatureHelp(
     );
 }
 
-function getSignatureContext(textBeforePosition: string): {
+export type SignatureContext = {
     activeParameter: number;
     functionName: string;
     keywordArgument: string | null;
-} | undefined {
+};
+
+export function getSignatureContext(textBeforePosition: string): SignatureContext | undefined {
     let activeParameter = 0;
     let parenthesisLevel = 0;
     let isInString = false;

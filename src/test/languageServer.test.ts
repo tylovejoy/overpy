@@ -90,6 +90,24 @@ async function main(): Promise<void> {
     const defaultCompletions = getCompletionList(defaultDocument, { line: 0, character: 2 });
     assert.ok(defaultCompletions.items.some((item) => item.label === "wait" && item.kind === CompletionItemKind.Function));
 
+    const argEnumDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "wait(1, ");
+    const argEnumCompletions = getCompletionList(argEnumDocument, { line: 0, character: "wait(1, ".length });
+    assert.ok(argEnumCompletions.items[0].label.startsWith("Wait."), "enum members should be hoisted to the top");
+    const waitValue = argEnumCompletions.items.find((item) => item.label === "Wait.IGNORE_CONDITION");
+    assert.ok(waitValue);
+    assert.equal(waitValue.insertText, "Wait.IGNORE_CONDITION");
+    assert.equal(waitValue.filterText, "IGNORE_CONDITION");
+    assert.ok(waitValue.sortText?.startsWith("0"));
+    assert.ok(argEnumCompletions.items.some((item) => item.label === "wait"), "default completions should still be present");
+
+    const memberArgDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "eventPlayer.isHoldingButton(");
+    const memberArgCompletions = getCompletionList(memberArgDocument, { line: 0, character: "eventPlayer.isHoldingButton(".length });
+    assert.ok(memberArgCompletions.items.some((item) => item.label === "Button.INTERACT" && item.insertText === "Button.INTERACT"));
+
+    const nonEnumArgDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "wait(");
+    const nonEnumArgCompletions = getCompletionList(nonEnumArgDocument, { line: 0, character: "wait(".length });
+    assert.ok(!nonEnumArgCompletions.items.some((item) => item.label.startsWith("Wait.")), "non-enum argument should not surface enum members");
+
     const firstParameterDocument = TextDocument.create("file:///tmp/test.opy", "overpy", 1, "wait(");
     const firstParameterHelp = getSignatureHelp(firstParameterDocument, { line: 0, character: "wait(".length }, "(");
     assert.ok(firstParameterHelp);
